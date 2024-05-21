@@ -2,7 +2,8 @@ const express = require('express');
 const expressHandlebars = require('express-handlebars');
 const session = require('express-session');
 const canvas = require('canvas');
-
+require('dotenv').config();
+const accessToken = process.env.EMOJI_API_KEY;
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Configuration and Setup
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -54,7 +55,7 @@ app.engine(
             likeCond: function (curPost, userId, options ) {
                 for (let like of curPost.likedBy) {
                     if (like == userId) {
-                        console.log("test");
+    
                         return options.fn(this);
                     }
                 }
@@ -107,7 +108,7 @@ app.use(express.json());                            // Parse JSON bodies (as sen
 app.get('/', (req, res) => {
     const posts = getPosts();
     const user = getCurrentUser(req) || {};
-    res.render('home', { posts, user });
+    res.render('home', { posts, user, accessToken });
 });
 
 // Register GET route is used for error response from registration
@@ -264,7 +265,6 @@ function addUser(username) {
 
 // Middleware to check if user is authenticated
 function isAuthenticated(req, res, next) {
-    console.log(req.session.userId);
     if (req.session.userId) {
         next();
     } else {
@@ -341,8 +341,6 @@ function updatePostLikes(req, res) {
     // TODO: Increment post likes if conditions are met
     const id = req.params.id;
     let user = findUserByUsername(req.body.curUser)
-    console.log(req.body.curUser);
-    console.log(user);
     // get post
     let post = '';
     for (let i = 0; i < posts.length; i++) {
@@ -352,7 +350,6 @@ function updatePostLikes(req, res) {
         }
     }
     if (post != '') {
-        console.log(post)
         let alreadyLiked = false;
         for (let like of post.likedBy) {
             if (like == user.id) {
@@ -382,7 +379,6 @@ function handleAvatar(req, res) {
         let avatarGenerate = generateAvatar(username[0], 100, 100)
         userObject.avatar_url = 'data:image/png;base64,' + avatarGenerate.toString('base64');
     }
-    console.log(userObject.avatar_url)
     res.send(userObject.avatar_url);
     
 }
