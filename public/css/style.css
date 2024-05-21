@@ -266,3 +266,7 @@ footer {
 
 
 }
+
+.user-posts > div > p {
+    text-align: center;
+}
