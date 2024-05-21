@@ -1,0 +1,44 @@
+{{! Use the main layout }}
+{{!< main }}
+
+<div class="profile-container">
+    <div class="profile-avatar">
+        <!-- Correct path for the default avatar image -->
+    </div>
+    
+    <section class="profile-info">
+        <!-- user profile info -->
+        <div class="profileImage">
+        <img src="{{#if user.avatar_url}}
+                        {{user.avatar_url}}
+                    {{else}}
+                        /avatar/{{user.username}}
+                    {{/if}}" 
+                    alt="User Avatar" 
+                    class="header-avatar">
+        </div>
+        <div class="userDescription">
+            <h1>User Profile</h1>
+            <p><b>Username: </b> {{user.username}}</p>
+            <p><b>Member Since:</b> {{user.memberSince}} </p>
+        </div>
+    </section>
+</div>
+
+<section class="user-posts">
+    <!-- you can call posts tweets, or truths, or whatever, these are neologisms. Choose your own new in server.js -->
+    <h2>Your {{{postNeoType}}}s</h2>
+    <!-- you'll need to make this conditional and #each expression work -->
+    <div>
+    {{#if currentUser.posts.length}}
+        <ul>
+            {{#each currentUser.posts}}
+                {{> post this user=../user}}
+            {{/each}}
+        </ul>
+    {{else}}
+        <!-- fix this up with some helper functions and other handlebars expressions, or add you own character -->
+        <p>You have not posted yet, poster.</p>
+    {{/if}}
+    </div>
+</section>

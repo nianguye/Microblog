@@ -1,0 +1,101 @@
+{{! Partial for a single post }}
+<div class="post">
+    <!-- The posts is getting passed in -->
+
+
+
+    <div class="post-avatar" id={{this.id}} curUser={{this.username}}>
+        <!-- the user's avatar -->
+        <img src='' class="curImg">
+
+        <script>
+            //Wait for the website to load so that all of the id are listed before displaying the images
+            (function() {
+                window.addEventListener("load", init);
+            function init() {
+                fetch(`/avatar/${document.getElementById(`{{this.id}}`).getAttribute('curUser')}`, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                })
+                .then(response => response.text())
+                .then(text => {displayImg(text);})
+
+                function displayImg(text) {
+                    let currentImage = document.createElement("img");
+                    let postAvatar =  document.getElementById(`{{this.id}}`);
+
+                    console.log(postAvatar);
+                    currentImage.src = text;
+                    postAvatar.appendChild(currentImage);
+
+                }
+            }
+            })();
+        </script>
+
+    </div>
+    <div class="post-content preserve-newlines">
+        <!-- the post -->
+        <h1> {{this.title}}</h1>
+        <p> {{this.content}}  </p>
+        <div class="post-status-bar">
+            <!-- everything that is shown in the status bar -->
+            <!-- Heart = ♥ -->
+            <!-- font awesome  trashcan = <i class="fas fa-trash-alt"> </i>-->
+            <div class="left-status">
+            {{#ifCond this.username user.username}}
+               <p onclick="handleDeleteClick(event)"> 
+                    <button data-id={{this.id}} class="delete-button"><i class="fas fa-trash-alt"> </i> </button> 
+                </p>
+                {{else}}
+                <p  onclick="handleLikeClick(event)">
+                    {{#likeCond this user.id}}  
+                        <button class="likeButton"  data-id={{this.id}}>♥</button>
+                        {{else}}
+                            <button data-id={{this.id}}>♥</button>
+                    {{/likeCond}}
+                    
+                </p>
+            {{/ifCond}}
+                <p>{{this.likes}} Likes</p>
+            </div>
+            <p>Posted by {{this.username}} on {{this.timestamp}}</p>
+        </div>        
+    </div>
+</div>
+<script>
+    function handleLikeClick(event) {
+        const postId = event.target.getAttribute('data-id');
+
+        fetch(`/like/${postId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `curUser={{user.username}}`
+        })
+        /* Need to refresh the page if using fetch */
+        .then(window.location.reload());
+
+        // you might want to "fetch" something...        
+    }
+
+    function handleDeleteClick(event) {
+        const buttonElement = event.target.closest('.delete-button');
+        const postId = buttonElement.getAttribute('data-id');        
+        console.log("Test")
+        // you might want to "fetch" something...     
+        fetch(`/delete/${postId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `curUser={{user}}`
+        })
+        /* Need to refresh the page if using fetch */
+        .then(window.location.reload());   
+        
+    }    
+</script>
