@@ -3,12 +3,18 @@ const expressHandlebars = require('express-handlebars');
 const session = require('express-session');
 const canvas = require('canvas');
 const populateDB = require('./populatedb.js');
-const passport = require('./passport.js');
+const passport = require('passport');
 const dbFileName = 'microblog.db';
 const showDB = require('./showdb.js');
 const sqlite = require('sqlite');
 const sqlite3 = require('sqlite3');
+const crypto = require('crypto');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const dotenv = require('dotenv');
+
 require('dotenv').config();
+
+
 const accessToken = process.env.EMOJI_API_KEY;
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Configuration and Setup
@@ -16,6 +22,35 @@ const accessToken = process.env.EMOJI_API_KEY;
 
 const app = express();
 const PORT = 3000;
+
+// Load environment variables from .env file
+dotenv.config();
+
+
+// Use environment variables for client ID and secret
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+
+// Configure passport
+passport.use(new GoogleStrategy({
+    clientID: CLIENT_ID,
+    clientSecret: CLIENT_SECRET,
+    callbackURL: `http://localhost:${PORT}/auth/google/callback`,
+    userProfileURL:'https://www.googleapis.com/oauth2/v3/userinfo',
+    scope: ['profile']
+}, (token, tokenSecret, profile, done) => {
+    return done(null, profile);
+}));
+
+passport.serializeUser((user, done) => {
+    done(null, user);
+});
+
+passport.deserializeUser((obj, done) => {
+    done(null, obj);
+});
+
+
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -114,29 +149,89 @@ app.use(express.json());                            // Parse JSON bodies (as sen
 // We pass the posts and user variables into the home
 // template
 //
-//app.get('/auth/google', passport.authenticate('google'));
+// Given by CourseAI
+function hash(input) {
+    const hash = crypto.createHash('sha256');
+    hash.update(input);
+    return hash.digest('hex');
+}
 
+app.get('/auth/google', passport.authenticate('google', { scope: ['profile'] }));
+
+app.get('/googleLogout', (req,res) => {
+    res.render('googleLogout');
+}
+);
+
+app.get('/logoutCallback',(req,res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Error destroying session:', err);
+            res.status(500).send('Internal Server Error');
+        } else {
+            // Redirect to a different page after logout
+            res.redirect('/');
+        }
+    });
+}
+);
+
+app.get('/auth/google/callback',
+        passport.authenticate('google', { failureRedirect: '/' }),
+        async (req, res) => {
+        const googleId = req.user.id;
+        console.log(googleId);
+        const hashedGoogleId = hash(googleId);
+        req.session.hashedGoogleId = hashedGoogleId;
+    // Check if user already exists
+        try {
+            let localUser = await findUserByHashedGoogleId(hashedGoogleId);
+            console.log(localUser)
+            if (localUser) {
+                req.session.userId = localUser.id;
+                req.session.loggedIn = true;
+                res.redirect('/');
+            } else {
+                res.redirect('/registerUsername');
+            }
+        }
+        catch(err){
+            console.error('Error finding user:', err);
+            res.redirect('/error');
+        }
+    }
+);
+
+app.get('/registerUsername', (req, res) => {
+    res.render('registerUsername', { regError: req.query.error });
+});
+
+app.post('/registerUsername', (req, res) => {
+    // TODO: Register a new user
+    registerUser(req, res);
+
+});
+let postType = '';
+
+
+app.post('/postChange',(req, res) => {
+    // TODO: Update post likes
+    // id: postId
+
+    postType = req.body.curType;
+    console.log(postType);
+    res.status(200).send({ message: 'Likes updated sucessfully' });
+});
 
 app.get('/', async (req, res) => {
-    const posts = await getPosts();
+    const posts = await getPosts(postType);
     const user = await getCurrentUser(req) || {};
     res.render('home', { posts, user, accessToken });
 });
 
 // Register GET route is used for error response from registration
 //
-app.get('/register', (req, res) => {
-    res.render('loginRegister', { regError: req.query.error });
-});
 
-// Login route GET route is used for error response from login
-//
-app.get('/login', (req, res) => {
-    res.render('loginRegister', { loginError: req.query.error });
-});
-
-// Error route: render error page
-//
 app.get('/error', (req, res) => {
     res.render('error');
 });
@@ -163,6 +258,9 @@ app.post('/like/:id', isAuthenticated,(req, res) => {
     updatePostLikes(req, res);
 
 });
+
+
+
 app.get('/profile', isAuthenticated, (req, res) => {
     // TODO: Render profile page
     renderProfile(req,res);
@@ -186,36 +284,13 @@ app.get('/logout', (req, res) => {
 
 });
 app.post('/delete/:id', isAuthenticated, async (req, res) => {
-    // TODO: Delete a post if the current user is the owner
-    /*
-    const id = req.params.id;
-    // get post
-    let post = '';
-    for (let curPost of posts) {
-        if (curPost.id == id) {
-            post = curPost;
-            break;
-        }
-    }
-    if (post != '') {
-        posts = posts.filter(function(curPost) {
-            return curPost != post;
-        });
-    }
-    // reset the id
-    for (let i = 0; i < posts.length; i++) {
-        posts[i].id = i + 1;
-    }
-    */
+
     const id = req.params.id;
     let db = await getDBConnection();
-    /*
-    let qry = `SELECT * FROM posts WHERE id=?`
-    let curPost = await db.get(qry,[id]);*/
     await db.run('DELETE from posts WHERE id=?', [id]);
     await db.close();
     res.status(200).send({ message: 'Post deleted successfully' });
-    //res.redirect('/');
+
 });
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -231,19 +306,7 @@ app.listen(PORT, () => {
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Example data for posts and users
-/*
-let posts = [
-    { id: 1, title: 'Sample Post', content: 'This is a sample post.', username: 'SampleUser', timestamp: '2024-01-01 10:00', likes: 1, likedBy: [2]},
-    { id: 2, title: 'Another Post', content: 'This is another sample post.', username: 'AnotherUser', timestamp: '2024-01-02 12:00', likes: 0, likedBy: []},
-];
-let users = [
-    { id: 1, username: 'SampleUser',
-     avatar_url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAABmJLR0QA/wD/AP+gvaeTAAAD9UlEQVR4nO3bX2iVdRzH8fdp+Yfq5KAtN8Ioh4yMkFUzCyXoJtYfixYTGoFReLdoSgtSSAYyulAvMhBLLNZYuAK9UdSyGpI6JEhnZFmZGtbUEItYW3NdPByejbO2Z3Kenc/PPq+b8+w8vwPf8d72/DlnmeEOhjEZ1xV7ABvNQcQ4iBgHEeMgYhxEjIOIcRAxDiLGQcQ4iBgHEeMgYhxEjIOIcRAxDiLGQcQ4iBgHEeMgYhxEjIOIcRAxDiLGQcQ4iBgHEeMgYhxEjIOIcRAx1xd7gKvx8wV4aw/s64Wf+mBgCKpuhfqF8PKjUJaN1p39HeY0wXBHceedjOCCvL0PVn4At9wE6xrg8RrIzoTvfoWuw1DzOjz3EKx8DN79rNjTTl4mpH9p27ALVnVARSkcXAt3lOevOXcJnt4APT/Ez4X0GxLMMeT4WWjpjLbblo0dA6CyFPavhnkVUzdbIQUTZP0uGLoSbS+9d/y1N86ArSvSnykNwQT5pDfezmQmXr+kGu6Zk948aQkmSN/leHvP0WSvWbYonVnSFEyQ8my83dIZndJOpLYqvXnSEkyQxdXx9pmLsKQVjvw4/msW3J7uTGkIJkhzHZSMmPbUeVjcCmu64K+BsV8ze1ZYp7wQUJCFVdD67Ojn/h6EdTtg/quw40hx5iq0oC4MITr9fa0zPgUeqW4BbHweqiunfq5CCS4IwKGT8OIW+OaX/H3TSuCFh6PbKmXZ/P3qggwC0D8IG3dD2074oz9//+xZ8M5L8OQEF5Fqgg2Sc+4SrNkO73XDlTG+k+Y6WN+Y7GJSQfBBcr46Bc3t0P1t/r619fDGM1M+0lW5ZoLkbD8ETe+PvrKfVgJft8FdtxVvrqSCOe1NqmER9L4J98+Nnxscgs2fFm+myQgmSKYx2e0SgPKbYXdLdGDP2XssnbkKLZggEJ3uJlWWhdVPxV+fvlD4edIQVJADJya3ful98fbM6YWdJS1BBen8Egb+Sb6+YsSfrLsDOKBDYEH6LkP7geTrT/4WbzcE8t5IUEEAXmmP3l9PYsv+6LG6ElY8kt5MhRRckD/7o/dCPu4Zf13XYdi0Nzq471wF0wP5wFMwF4aZRti0HOpr4aOe6Lqi9IboJ792bvQplMEhOHoatn0B27qj5z9sgjv/4xMqioIKcn7z6Du4B7+HrZ9Hj2cuRveyKkrhwXnQ8AA8URPOPaycYIL8XwR3DLnWOYgYBxHjIGIcRIyDiHEQMQ4ixkHEOIgYBxHjIGIcRIyDiHEQMQ4ixkHEOIgYBxHjIGIcRIyDiHEQMQ4ixkHEOIgYBxHjIGIcRIyDiHEQMQ4ixkHEOIgYBxHjIGIcRIyDiHEQMf8CZljRrBGhTj8AAAAASUVORK5CYII=',
-      memberSince: '2024-01-01 08:00'},
-    { id: 2, username: 'AnotherUser', avatar_url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAABmJLR0QA/wD/AP+gvaeTAAAEAElEQVR4nO3bzUsqbxjG8evIKK2jF6MXqUVB217I/o6CkFoGBbZr3TLaZpAWRG2icO+qpb1DtGtpIRgZVLtkxuo+i3A4xs+OqTXX8zv3ByTDHG77+ozPBP0SEYGi4fN6AFVOg5DRIGQ0CBkNQkaDkNEgZDQIGQ1CRoOQ0SBkNAgZDUJGg5DRIGQ0CBkNQkaDkNEgZDQIGQ1CRoOQ0SBkNAgZDUJGg5DRIGQ0CBkNQkaDkNEgZDQImf9FkJmZGQwNDXk9RkP8Mv0/qO7v79HT0wPbtnF8fIxwOOz1SHUxfoWsr6/Dtm0AwNramsfT1M/oFVIsFtHb24tcLgcA8Pv9yGQy6Orq8niy2hm9QpLJJHK5HCzLAvAeaHNz0+Op6iQGGx0dFQCSSCQEgACQ1tZWKRQKXo9WM2ODnJycCAAZHx8XEZGxsTE3ys7OjsfT1c7YU1bpA3xhYaHsKwCsrq56MlNDeP2OqMXt7a0EAgHp6OgQ27ZFRMRxHOns7HRXyeHhocdT1sbIFZJIJOA4Dubn5xEIBAC877BmZ2fdnzF1C2zcttdxHIRCITw+PiKbzaK9vd197M+LRMuycH19bdwW2LgVsr+/j7u7O0xNTZXFAIC2tjZMTEwAAF5eXrCxseHFiPXx+pz5VSMjIwJAzs/P//Px09NTo7fARgU5OjoSABIOhz/9udL1CQDZ3t7+meEaxKhT1setbiXRaNS9H4vFvnWmhvP6HVGtXC4nfr+/bKtbiW3bEgwG3VWSTqd/aMr6GbNC4vE4isUi5ubm3K1uJYFAwNgtsBHbXtu2EQqFkM/na3q+ZVnIZDLo7u5u8GSNZ8QK2dvbQz6fx/T0NOR9I1LVLRKJAHjfAicSCY9fRZU8OVF+0fDwsACQs7OzLz2v9AdIANLS0iLPz8/fNGHj0AdJp9NVbXUrKV23AJCtra0GT9d49Kes0rb1b1vdSv7cAhvx4e71O+IzV1dX4vP5JBgMiuM4NR2jUChIc3Ozu0pSqVSDp2ws6hWyvLyMt7c3RCIR+P3+mo7R1NSEyclJ9/ulpSUI8caSNkgqlcLu7i4AoL+/v65jDQ4OuvcvLi6wsrJS1/G+lddL9KObmxuJxWJlp5m+vj5JJpOSzWbl9fW16mM9PDzIwcGBDAwMuMcCID6fT6LRqFxeXv71qv+n0QWxLKvsl/fxFo/HqzrO09PTp8cp3RYXF7/5FX2NEVfq/xLaz5B/lQYho0HIaBAyGoSMBiGjQchoEDIahIwGIaNByGgQMhqEjAYho0HIaBAyGoSMBiGjQchoEDIahIwGIaNByGgQMhqEjAYho0HIaBAyGoSMBiGjQchoEDIahIwGIaNByGgQMhqEjAYho0HI/AbLZAYbyph6eQAAAABJRU5ErkJggg=='
-    , memberSince: '2024-01-02 09:00'},
-];
-*/
+
 
 // Make sure to wait for the function
 
@@ -256,38 +319,34 @@ getDBConnection();
 // Function to find a user by username
 async function findUserByUsername(username) {
     // TODO: Return user object if found, otherwise return undefined
-    /*
-    for (let i = 0; i < users.length; i++) {
-        if (users[i].username == username) {
-            return users[i];
-        }
-    }
-    return undefined;
-    */
     let db = await getDBConnection();
     let qry = `SELECT * FROM users WHERE username=?`
     let result = await db.get(qry,[username]);
+    await db.close();
+    return result;
+}
+
+async function findUserByHashedGoogleId(googleId) { 
+    let db = await getDBConnection();
+    console.log(googleId)
+    let qry = `SELECT * FROM users WHERE hashedGoogleId=?`
+    let result = await db.get(qry,[googleId]);
+    await db.close();
     return result;
 }
 
 // Function to find a user by user ID
 async function findUserById(userId) {
-    // TODO: Return user object if found, otherwise return undefined
-    /*
-    for (let i = 0; i < users.length; i++) {
-        if (users[i].id == userId) {
-            return users[i];
-        }
-    }*/
-    
+    // TODO: Return user object if found, otherwise return undefined    
     let db = await getDBConnection();
     let qry = `SELECT * FROM users WHERE id=?`
     let result = await db.get(qry, [userId]);
+    await db.close();
     return result;
 }
 
 // Function to add a new user
-async function addUser(username) {
+async function addUser(username, req) {
     // TODO: Create a new user object and add to users array
     /* Given from the courseAI */
     // Create a new Date object
@@ -300,16 +359,13 @@ async function addUser(username) {
 
     const year = now.getFullYear();
     const month = now.getMonth() + 1; // Adding 1 because months are zero-based (0 for January, 11 for December)
-
+    let hashId = req.session.hashedGoogleId;
     let db = await getDBConnection();
-    return db.run(
+    db.run(
         'INSERT INTO users (username, hashedGoogleId, avatar_url, memberSince) VALUES (?, ?, ?, ?)',
-        [username, `${year}-${month < 10 ? '0' + month : month}-${days} ${hours}:${minutes}`, 'data:image/png;base64,' + generateAvatar(username[0], 100, 100).toString('base64'), `${year}-${month < 10 ? '0' + month : month}-${days} ${hours}:${minutes}`]
+        [username, hashId, 'data:image/png;base64,' + generateAvatar(username[0], 100, 100).toString('base64'), `${year}-${month < 10 ? '0' + month : month}-${days} ${hours}:${minutes}`]
     );
-    /*
-    let newID = {id: users.length + 1, username: username, avatar_url: 'data:image/png;base64,' + generateAvatar(username[0], 100, 100).toString('base64'), memberSince: `${year}-${month < 10 ? '0' + month : month}-${days} ${hours}:${minutes}`, posts: []}
-
-    users.push(newID);*/
+    await db.close();
 }
 
 // Middleware to check if user is authenticated
@@ -333,8 +389,9 @@ async function registerUser(req, res) {
         res.redirect('/register?error=Username+already+exists');
     }
     else {
-        addUser(username);
-        res.redirect('/login');
+        addUser(username, req);
+        loginUser(req, res);
+        res.redirect('/');
     }
 
 }
@@ -348,6 +405,7 @@ async function loginUser(req, res) {
     if (user) {
         req.session.loggedIn = true;
         req.session.userId = user.id;
+        req.session.hashedGoogleId = user.hashedGoogleId
         res.redirect('/')
     }
     else {
@@ -358,36 +416,33 @@ async function loginUser(req, res) {
 // Function to logout a user
 function logoutUser(req, res) {
     // TODO: Destroy session and redirect appropriately
-    /*
-    req.session.loggedIn = false;
-    req.session.userId = '';*/
+
     // Reference from the session and file slides
     req.session.destroy(err => {
         if (err) {
             console.error('Error destroying session:', err);
             res.redirect('/error');
         } else {
-            res.redirect('/');
+            res.redirect('/googleLogout');
         }
     });
-    //res.redirect('/');
 }
 
 // Function to render the profile page
 async function renderProfile(req, res) {
     // TODO: Fetch user posts and render the profile page
     let currentUser = {posts: []}
-    /*
-    for (let i = posts.length - 1; i >= 0; i--) {
-        if (posts[i].username == findUserById(req.session.userId).username) {
-            currentUser.posts.push(posts[i])
-        } 
-    }
-    */
     let db = await getDBConnection();
     let user = await getCurrentUser(req) || {}
-    console.log(user);
-    currentUser.posts = await db.all(`SELECT * FROM posts WHERE username=?`,[user.username]);
+
+    if (postType == '' || postType == "Recent") {
+        currentUser.posts = await db.all(`SELECT * FROM posts WHERE username=?`,[user.username]);
+        currentUser.posts = currentUser.posts.reverse();
+    }
+    else {
+        currentUser.posts = await db.all(`SELECT * FROM posts WHERE username=? ORDER BY likes DESC`, [user.username]);
+    }
+    await db.close();
     res.render('profile', { user, currentUser });
 }
 
@@ -398,12 +453,12 @@ async function updatePostLikes(req, res) {
     const id = req.params.id;
     let user = await findUserByUsername(req.body.curUser)
     let curPost =  await db.get(`SELECT * FROM posts WHERE id=?`,[id]);
-    console.log(curPost);
+
     let curArray = curPost.likedby.split(",");
-    console.log(curArray);
+
     let alreadyLiked = false;
     for (let like of curArray) {
-        console.log("loop");
+
         if (parseInt(like) == user.id) {
             alreadyLiked = true;
         }
@@ -434,7 +489,6 @@ async function updatePostLikes(req, res) {
             `UPDATE posts SET likedby = ? WHERE id = ?`,[curArray.join(","),id]
         );  
     }
-    
     await db.close()
     res.status(200).send({ message: 'Post added successfully' });
 }
@@ -442,7 +496,6 @@ async function updatePostLikes(req, res) {
 // Function to handle avatar generation and serving
 async function handleAvatar(req, res) {
     // TODO: Generate and serve the user's avatar image
-
     const username = req.params.username;
     const userObject = await findUserByUsername(username);
     if (userObject.avatar_url == undefined) {
@@ -460,23 +513,26 @@ function getCurrentUser(req) {
 }
 
 // Function to get all posts, sorted by latest first
-async function getPosts() {
-/*
-    await startDB();
-    let qry = `SELECT * FROM posts`;
-    let result = await db.get(qry);
-    console.log(result);
-*/
+async function getPosts(postType) {
+
     let db = await getDBConnection();
-    let posts = await db.all(`SELECT * FROM posts`);
-    return posts.slice().reverse();
+    if (postType == "Recent" || postType == '') {
+        let posts = await db.all(`SELECT * FROM posts`);
+        await db.close();
+        return posts.slice().reverse();
+    }
+    else {
+   
+        let posts = await db.all(`SELECT * FROM posts ORDER BY likes DESC`);
+        await db.close();
+        return posts.slice()
+    }
 }
 
 // Function to add a new post
 async function addPost(title, content, user) {
     // TODO: Create a new post object and add to posts array
     const now = new Date();
-
     // Get the current time components
     const hours = now.getHours();
     const minutes = now.getMinutes();
@@ -485,17 +541,14 @@ async function addPost(title, content, user) {
     const month = now.getMonth() + 1; // Adding 1 because months are zero-based (0 for January, 11 for December)
 
     let db = await getDBConnection();
-    return db.run(
-        'INSERT INTO posts (title, content, username, timestamp, likes) VALUES (?, ?, ?, ?, ?)',
-        [title, content, user, `${year}-${month < 10 ? '0' + month : month}-${days} ${hours}:${minutes}`, 0]
+    db.run(
+        'INSERT INTO posts (title, content, username, timestamp, likes, likedby) VALUES (?, ?, ?, ?, ?, ?)',
+        [title, content, user, `${year}-${month < 10 ? '0' + month : month}-${days} ${hours}:${minutes}`, 0, '']
     );
-
-    let newID = {id: posts.length + 1, title: title, content: content, username: user, timestamp:`${year}-${month < 10 ? '0' + month : month}-${days} ${hours}:${minutes}`, likes: 0, likedBy: [] }
-    posts.push(newID);
+    await db.close();
 }
 
 let randomColor = ["red","blue", "yellow", "pink", "purple", "orange", "brown", "grey"];
-//(Math.floor(Math.random() * randomColor.length))]
 
 function generateAvatar(letter, width = 100, height = 100)  {
     const canva = canvas.createCanvas(width,height);

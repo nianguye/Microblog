@@ -31,6 +31,13 @@
     <!-- you'll need to make this conditional and #each expression work -->
     <div>
     {{#if currentUser.posts.length}}
+        <div class="displayFlex">
+            <input type="radio" id="option1" name="choices" value="Likes" onclick=handleLike(event)>
+            <label for="option1" >Likes</label><br>
+
+            <input type="radio" id="option2" name="choices" value="Recent"  onclick=handleRecent(event)>
+            <label for="option2">Recent</label><br>
+        </div>
         <ul>
             {{#each currentUser.posts}}
                 {{> post this user=../user}}
@@ -42,3 +49,60 @@
     {{/if}}
     </div>
 </section>
+
+<script>
+function handleLike(event) {
+  
+    const postId = event.target.getAttribute('data-id');
+
+    fetch(`/postChange`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `curType=Like`
+    })
+
+    .then(response => {
+            if (response.ok) {
+    // Deletion successful, reload the page
+                window.location.reload();
+            } else {
+                console.error('Failed to delete the post.');
+            }
+    }) 
+    .catch(error => {
+        console.error('Error deleting post:', error);
+    });
+    
+    // you might want to "fetch" something...        
+}
+
+function handleRecent(event) {
+
+    
+    const postId = event.target.getAttribute('data-id');
+
+    fetch(`/postChange`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `curType=Recent`
+    })
+
+    .then(response => {
+            if (response.ok) {
+    // Deletion successful, reload the page
+                window.location.reload();
+            } else {
+                console.error('Failed to delete the post.');
+            }
+    }) 
+    .catch(error => {
+        console.error('Error deleting post:', error);
+    });
+    
+    // you might want to "fetch" something...        
+}
+</script>

@@ -35,20 +35,32 @@
         </div>
     </section>
      {{/if}}
+
     <section class="posts-list">
+        
         {{#if posts.length}}
-        <ul>
+        <ul class="displayFlex">
+            <input type="radio" id="option1" name="choices" value="Likes" onclick=handleLike(event)>
+            <label for="option1" >Likes</label><br>
+
+            <input type="radio" id="option2" name="choices" value="Recent"  onclick=handleRecent(event)>
+            <label for="option2">Recent</label><br>
+        </ul>
+        <div>
             {{#each posts}}
                 <!-- you have to pass the user in to posts and this is the syntax -->
                 {{> post this user=../user}}            
             {{/each}}
-        </ul>
+        </div>
         {{else}}
             <!-- no posts, oh no, what now? -->
         {{/if}}
     </section>
 </section>
 
+
+
+  
 
 
 {{! JavaScript for Emoji Integration }}
@@ -60,6 +72,62 @@
  so, put them in this array when the array is empty so 
  that you have them.
 */
+
+
+function handleLike(event) {
+  
+    const postId = event.target.getAttribute('data-id');
+
+    fetch(`/postChange`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `curType=Like`
+    })
+
+    .then(response => {
+            if (response.ok) {
+    // Deletion successful, reload the page
+                window.location.reload();
+            } else {
+                console.error('Failed to delete the post.');
+            }
+    }) 
+    .catch(error => {
+        console.error('Error deleting post:', error);
+    });
+    
+    // you might want to "fetch" something...        
+}
+
+function handleRecent(event) {
+
+    
+    const postId = event.target.getAttribute('data-id');
+
+    fetch(`/postChange`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `curType=Recent`
+    })
+
+    .then(response => {
+            if (response.ok) {
+    // Deletion successful, reload the page
+                window.location.reload();
+            } else {
+                console.error('Failed to delete the post.');
+            }
+    }) 
+    .catch(error => {
+        console.error('Error deleting post:', error);
+    });
+    
+    // you might want to "fetch" something...        
+}
 
 let allEmojis = [];  // Global list to hold all emojis
 
@@ -77,7 +145,7 @@ function toggleEmojiPanel() {
     const container = document.getElementById('emoji-container');
     container.style.display = container.style.display === 'none' ? 'block' : 'none';
 
-    console.log("test")
+
 
     if(container.style.display === 'block' && allEmojis.length == 0){
         // go "Fetch" you some emojis and show them off with displayEmojies

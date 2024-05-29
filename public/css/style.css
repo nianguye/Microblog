@@ -135,8 +135,11 @@ a {
 
 .user-posts ul > div {
     margin: auto;
-
+    margin-bottom: 10px;
+    height:150px;
 }
+
+
 
 .user-posts >  h2{
     text-align: center;
@@ -181,6 +184,11 @@ a {
 
 .content-container {
     display: flex;
+    justify-content: space-around;
+}
+
+.displayFlex {
+    display:flex;
     justify-content: center;
 }
 
@@ -191,6 +199,9 @@ footer {
     background-color: green;
     background-size: cover;
     text-align: center;
+}
+.posts-list  div {
+    height: 150px;
 }
 
 .post-content  > p{
@@ -217,6 +228,9 @@ footer {
     background-color: white;
     box-shadow: 10px 5px 5px grey;
     height: 400px;
+    width: 250px;
+    justify-content: center;
+    align-items: center
 }
 
 @media (width < 1270px) {
