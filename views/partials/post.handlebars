@@ -77,7 +77,17 @@
             body: `curUser={{user.username}}`
         })
         /* Need to refresh the page if using fetch */
-        .then(window.location.reload());
+        .then(response => {
+               if (response.ok) {
+       // Deletion successful, reload the page
+                    window.location.reload();
+                } else {
+                    console.error('Failed to delete the post.');
+                }
+        }) 
+        .catch(error => {
+         console.error('Error deleting post:', error);
+        });
 
         // you might want to "fetch" something...        
     }
@@ -95,7 +105,17 @@
             body: `curUser={{user}}`
         })
         /* Need to refresh the page if using fetch */
-        .then(window.location.reload());   
+        .then(response => {
+               if (response.ok) {
+       // Deletion successful, reload the page
+                    window.location.reload();
+                } else {
+                    console.error('Failed to delete the post.');
+                }
+        }) 
+        .catch(error => {
+         console.error('Error deleting post:', error);
+        });
         
     }    
 </script>
