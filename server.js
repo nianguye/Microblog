@@ -269,6 +269,7 @@ app.get('/avatar/:username', (req, res) => {
     // TODO: Serve the avatar image for the user
     handleAvatar(req, res);
 });
+/*
 app.post('/register', (req, res) => {
     // TODO: Register a new user
     registerUser(req, res);
@@ -277,7 +278,7 @@ app.post('/register', (req, res) => {
 app.post('/login', (req, res) => {
     // TODO: Login a user
     loginUser(req, res);
-});
+});*/
 app.get('/logout', (req, res) => {
     // TODO: Logout the user
     logoutUser(req, res)
@@ -386,12 +387,12 @@ async function registerUser(req, res) {
     let result = await findUserByUsername(username);
     if (result) {
         // User exist
-        res.redirect('/register?error=Username+already+exists');
+        res.redirect('/registerUsername?error=Username+already+exists');
     }
     else {
-        addUser(username, req);
-        loginUser(req, res);
-        res.redirect('/');
+        await addUser(username, req);
+        await loginUser(req, res);
+
     }
 
 }
