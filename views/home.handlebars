@@ -10,11 +10,13 @@
         <!-- make a header here -->
 
         <h1> Create a new Post </h1>
-        <form action="/posts" method="POST">
+        <form action="/posts" method="POST" enctype="multipart/form-data">
             <!-- title input field name = "title" -->
             <!-- text area input field name = "content" -->
             <input name="title" id="title" onclick="enableTitle()" placeholder="Title" minlength="1" required>
             <textarea id="description" name="content" onclick="enableDesc()" placeholder="What do you want to talk about?" minlength="1" required></textarea>
+            <input name="bidValue" id="title"  placeholder="Bid value" minlength="1" required>
+            <input name="file" type="file" >
             <div class="form-actions">
                 <button type="button" class="emoji-button" onclick="toggleEmojiPanel()">😀</button>
                 
@@ -36,15 +38,18 @@
     </section>
      {{/if}}
 
+    {{#if posts.length}}
     <section class="posts-list">
         
-        {{#if posts.length}}
         <ul class="displayFlex">
-            <input type="radio" id="option1" name="choices" value="Likes" onclick=handleLike(event)>
-            <label for="option1" >Likes</label><br>
-
-            <input type="radio" id="option2" name="choices" value="Recent"  onclick=handleRecent(event)>
-            <label for="option2">Recent</label><br>
+        <div class="sortDisplay">
+            <button  onclick=displaySort()> Sort by </button>
+            <div class="sortButton">
+            <button  class="sortButton" value="Likes" onclick=handleLike(event)> Likes </button>
+            <button  class="sortButton"  value="Recent" onclick=handleRecent(event)> Recent </button>
+            <button  class="sortButton" value="Bet" onclick=handleBet(event)> Price </button>
+            </div>
+        </div>
         </ul>
         <div>
             {{#each posts}}
@@ -52,10 +57,12 @@
                 {{> post this user=../user}}            
             {{/each}}
         </div>
-        {{else}}
-            <!-- no posts, oh no, what now? -->
-        {{/if}}
+
+
     </section>
+    {{else}}
+    {{/if}}
+
 </section>
 
 
@@ -72,7 +79,9 @@
  so, put them in this array when the array is empty so 
  that you have them.
 */
+function displaySort() {
 
+}
 
 function handleLike(event) {
   
@@ -100,6 +109,33 @@ function handleLike(event) {
     
     // you might want to "fetch" something...        
 }
+function handleBet(event) {
+  
+    const postId = event.target.getAttribute('data-id');
+
+    fetch(`/postChange`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `curType=Bet`
+    })
+
+    .then(response => {
+            if (response.ok) {
+    // Deletion successful, reload the page
+                window.location.reload();
+            } else {
+                console.error('Failed to delete the post.');
+            }
+    }) 
+    .catch(error => {
+        console.error('Error deleting post:', error);
+    });
+    
+    // you might want to "fetch" something...        
+}
+
 
 function handleRecent(event) {
 
@@ -184,7 +220,6 @@ function searchEmojis() {
     // use string.includes. 
 
     const filteredEmojis = allEmojis.filter(function(curEmoji) {
-            console.log(curEmoji)
             return curEmoji.slug.includes(searchTerm) || curEmoji.group.includes(searchTerm);
         });
     displayEmojis(filteredEmojis);

@@ -24,13 +24,17 @@ async function initializeDB() {
             content TEXT NOT NULL,
             username TEXT NOT NULL,
             timestamp DATETIME NOT NULL,
+            image TEXT,
             likes INTEGER NOT NULL,
-            likedby TEXT 
+            likedby TEXT,
+            BID INTEGER,
+            curBid TEXT NOT NULL
+
         );
-    `);
+    `)
 
     // Sample data - Replace these arrays with your own data
-
+    /*
     const posts = [
         { title: 'Sample Post', content: 'This is a sample post.', username: 'SampleUser', timestamp: '2024-01-01 10:00', likes: 1, likedBy: [2]},
         { title: 'Another Post', content: 'This is another sample post.', username: 'AnotherUser', timestamp: '2024-01-02 12:00', likes: 0, likedBy: []},
@@ -66,6 +70,7 @@ async function initializeDB() {
         );
     }));
     }
+    */
     console.log('Database populated with initial data.');
     await db.close();
 }

@@ -11,7 +11,7 @@ body {
 }
 
 header  {
-    width: 100vw;
+
     background-color: green;
     background-size: cover;
     display: flex;
@@ -60,12 +60,34 @@ a {
 
  .post-form button{
     background-color: green;
+    color: white;
  }
 
+ .bid-button {
+    background-color: green;
+    margin-bottom: 10px;
+    color: white;
+ }
+
+button:hover {
+    background-color: lightgreen;
+
+}
+button {
+    
+}
  .emoji-button {
     width:40px;
     height:40px;
  }
+
+.displayFlex button:hover {
+    background-color: lightgreen;
+}
+.displayFlexProfile button:hover {
+    background-color: lightgreen;
+}
+
 
  .post-button {
     width: 456px;
@@ -84,6 +106,7 @@ a {
     padding-bottom: 20vh;
 }
 
+
 .post {  
     background-color: white;
     width: 700px;
@@ -91,6 +114,11 @@ a {
     display: flex;
     margin-bottom: 10px;
     border-radius: 5%;
+    height: auto;
+}
+
+.userImage {
+    max-width: 95%;
 }
 
 .login-register {
@@ -136,10 +164,12 @@ a {
 .user-posts ul > div {
     margin: auto;
     margin-bottom: 10px;
-    height:150px;
+    height: auto;
 }
 
-
+.user-posts {
+    margin-bottom: 100px;
+}
 
 .user-posts >  h2{
     text-align: center;
@@ -159,6 +189,8 @@ a {
     margin-left:20px;
 
 }
+
+
 
 .post-avatar img {
     border-radius: 20%;
@@ -184,12 +216,53 @@ a {
 
 .content-container {
     display: flex;
-    justify-content: space-around;
+    justify-content: space-evenly;
+    height: auto;
+    margin-bottom: 50px;
 }
 
-.displayFlex {
+/* Reference from W3 school */
+.sortDisplay {
+    position: relative;
+    display: inline-block;
+}
+
+.sortButton {
+    position:absolute;
+}
+.sortButton > button {
+    display: none;
+    position: sticky;
+}
+
+.sortDisplay:hover .sortButton {display: block;}
+
+.displayFlexProfile {
     display:flex;
     justify-content: center;
+}
+
+.displayFlexProfile  button {
+    background-color: green;
+    width: 100px;
+    height: 50px;
+    margin-right:500px;
+    border: none;
+}
+.displayFlex {
+    display:flex;
+    padding-left: 0;
+}
+
+button {
+    border: none;
+}
+
+.displayFlex  button {
+    background-color: green;
+    width: 100px;
+    height: 50px;
+    border: none;
 }
 
 footer {
@@ -200,9 +273,7 @@ footer {
     background-size: cover;
     text-align: center;
 }
-.posts-list  div {
-    height: 150px;
-}
+
 
 .post-content  > p{
     overflow: hidden;
@@ -233,6 +304,7 @@ footer {
     align-items: center
 }
 
+
 @media (width < 1270px) {
 
     .content-container {
@@ -253,7 +325,7 @@ footer {
     }
     .user-posts ul > div {
         margin: auto;
-
+        margin-bottom: 10px;
     }
 
     .profile-info {

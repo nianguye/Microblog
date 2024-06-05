@@ -1,4 +1,5 @@
 {{! Partial for a single post }}
+
 <div class="post">
     <!-- The posts is getting passed in -->
 
@@ -39,6 +40,9 @@
     <div class="post-content preserve-newlines">
         <!-- the post -->
         <h1> {{this.title}}</h1>
+        {{#imageCond this.image}}
+        <img src={{this.image}} class="userImage">
+        {{/imageCond}}
         <p> {{this.content}}  </p>
         <div class="post-status-bar">
             <!-- everything that is shown in the status bar -->
@@ -46,11 +50,15 @@
             <!-- font awesome  trashcan = <i class="fas fa-trash-alt"> </i>-->
             <div class="left-status">
             {{#ifCond this.username user.username}}
-               <p onclick="handleDeleteClick(event)"> 
+                <p onclick="handleDeleteClick(event)"> 
                     <button data-id={{this.id}} class="delete-button"><i class="fas fa-trash-alt"> </i> </button> 
                 </p>
-                {{else}}
-                <p  onclick="handleLikeClick(event)">
+
+                <p>
+                    $ {{this.BID}}
+                </p>
+            {{else}}
+                <p onclick="handleLikeClick(event)">
                     {{#likeCond this user.id}}  
                         <button class="likeButton"  data-id={{this.id}}>♥</button>
                         {{else}}
@@ -58,11 +66,20 @@
                     {{/likeCond}}
                     
                 </p>
+                <p>
+                    ${{this.BID}} by {{this.curBid}}
+                </p>
+
             {{/ifCond}}
                 <p>{{this.likes}} Likes</p>
             </div>
             <p>Posted by {{this.username}} on {{this.timestamp}}</p>
-        </div>        
+        </div>  
+
+        {{#authenticateCond user.username}}
+        <input name="bidValue" id="bid{{this.id}}"  placeholder="Bid price" minlength="1" required>
+        <button type="submit" class="bid-button"data-id={{this.id}} onclick="handleBidClick(event)">Submit</button>
+        {{/authenticateCond}}
     </div>
 </div>
 <script>
@@ -90,6 +107,45 @@
         });
 
         // you might want to "fetch" something...        
+    }
+    function handleBidClick(event) {
+        const postId = event.target.getAttribute('data-id');
+        console.log(postId)
+        console.log(`bid{{this.id}}`);
+        const bidInput = document.getElementById(`bid${postId}`).value
+        console.log("here");
+        console.log(bidInput)
+        if (isInteger(bidInput)) {
+        fetch(`/bidPrice/${postId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `bidValue=${bidInput}&bidder={{user.username}}`
+        })
+        /* Need to refresh the page if using fetch */
+        .then(response => {
+               if (response.ok) {
+       // Deletion successful, reload the page
+                    window.location.reload();
+                } else {
+                    console.error('Failed to delete the post.');
+                }
+        }) 
+        .catch(error => {
+         console.error('Error deleting post:', error);
+        });
+        }
+        else {
+            alert("Please enter a correct value");
+        }
+        // you might want to "fetch" something...        
+    }
+    // CourseAssistAI
+    function isInteger(text) {
+        // Use parseInt to convert the text to an integer
+        // If the result is a valid number and the original text is not empty, it's an integer
+        return !isNaN(parseInt(text)) && !isNaN(text);
     }
 
     function handleDeleteClick(event) {

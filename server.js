@@ -11,7 +11,8 @@ const sqlite3 = require('sqlite3');
 const crypto = require('crypto');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const dotenv = require('dotenv');
-
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' }); 
 require('dotenv').config();
 
 
@@ -103,6 +104,19 @@ app.engine(
                     }
                 }
                 return options.inverse(this);
+            },
+            imageCond: function (img, options ) {
+                if (img) {
+                    return options.fn(this);
+                }
+                return options.inverse(this);
+            },
+            authenticateCond: function (id, options) {
+
+                if (id) {
+                    return options.fn(this);
+                }
+                return options.inverse(this);
             }
         },
     })
@@ -128,7 +142,7 @@ app.use(
 // should be used in your template files. 
 // 
 app.use((req, res, next) => {
-    res.locals.appName = 'MicroBlog';
+    res.locals.appName = 'TreeDeed';
     res.locals.copyrightYear = 2024;
     res.locals.postNeoType = 'Post';
     res.locals.loggedIn = req.session.loggedIn || false
@@ -140,7 +154,7 @@ app.use((req, res, next) => {
 app.use(express.static('public'));                  // Serve static files
 app.use(express.urlencoded({ extended: true }));    // Parse URL-encoded bodies (as sent by HTML forms)
 app.use(express.json());                            // Parse JSON bodies (as sent by API clients)
-
+app.use('/uploads', express.static('uploads'));     // Same as public but for uploads directory
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Routes
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -242,15 +256,22 @@ app.get('/post/:id', (req, res) => {
     // TODO: Render post detail page
 
 });
-app.post('/posts', async (req, res) => {
+app.post('/posts', upload.single('file'), async (req, res) => {
     // TODO: Add a new post and redirect to home
     const userId = await findUserById(req.session.userId);
-    addPost(req.body.title, req.body.content, userId.username);
+    console.log(req.file);
+    addPost(req.body.title, req.body.content, req.body.bidValue, req.file,  userId.username);
     res.redirect('/');
     //const posts = getPosts();
     //const user = getCurrentUser(req) || {};
     //res.render('home', { posts, user });
 });
+
+app.post('/bidPrice/:id', isAuthenticated, async (req, res) => {
+    console.log(req.body);
+    updateBid(req, res);
+});
+
 app.post('/like/:id', isAuthenticated,(req, res) => {
     // TODO: Update post likes
     // id: postId
@@ -440,6 +461,10 @@ async function renderProfile(req, res) {
         currentUser.posts = await db.all(`SELECT * FROM posts WHERE username=?`,[user.username]);
         currentUser.posts = currentUser.posts.reverse();
     }
+    else if ( postType == "Bet") {
+        currentUser.posts = await db.all(`SELECT * FROM posts WHERE username=? ORDER BY BID`,[user.username]);
+        currentUser.posts = currentUser.posts.reverse();
+    }
     else {
         currentUser.posts = await db.all(`SELECT * FROM posts WHERE username=? ORDER BY likes DESC`, [user.username]);
     }
@@ -448,6 +473,25 @@ async function renderProfile(req, res) {
 }
 
 // Function to update post likes
+async function updateBid(req,res) {
+    let db = await getDBConnection();
+    const id = req.params.id;
+    let curPost =  await db.get(`SELECT * FROM posts WHERE id=?`,[id]);  
+    var newBid = parseInt(req.body.bidValue);
+    var oldBid = parseInt(curPost.BID);
+    if (oldBid < newBid) {
+        console.log("here");
+        await db.run(
+            `UPDATE posts SET BID = ? WHERE id = ?`,[newBid,id]
+        );
+        await db.run(
+            `UPDATE posts SET curBid = ? WHERE id = ?`,[req.body.bidder,id]
+        );
+    }
+    await db.close();
+    res.status(200).send({ message: 'Bid updated successfully' });
+}
+
 async function updatePostLikes(req, res) {
     // TODO: Increment post likes if conditions are met
     let db = await getDBConnection();
@@ -522,6 +566,11 @@ async function getPosts(postType) {
         await db.close();
         return posts.slice().reverse();
     }
+    else if (postType == "Bet") {
+        let posts = await db.all(`SELECT * FROM posts ORDER BY BID`);
+        await db.close();
+        return posts.slice().reverse();
+    }
     else {
    
         let posts = await db.all(`SELECT * FROM posts ORDER BY likes DESC`);
@@ -531,7 +580,7 @@ async function getPosts(postType) {
 }
 
 // Function to add a new post
-async function addPost(title, content, user) {
+async function addPost(title, content, bid, file, user) {
     // TODO: Create a new post object and add to posts array
     const now = new Date();
     // Get the current time components
@@ -542,10 +591,18 @@ async function addPost(title, content, user) {
     const month = now.getMonth() + 1; // Adding 1 because months are zero-based (0 for January, 11 for December)
 
     let db = await getDBConnection();
+    if (file) {
     db.run(
-        'INSERT INTO posts (title, content, username, timestamp, likes, likedby) VALUES (?, ?, ?, ?, ?, ?)',
-        [title, content, user, `${year}-${month < 10 ? '0' + month : month}-${days} ${hours}:${minutes}`, 0, '']
+        'INSERT INTO posts (title, content, username, timestamp, likes, likedby, image, BID, curBid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [title, content, user, `${year}-${month < 10 ? '0' + month : month}-${days} ${hours}:${minutes}`, 0, '', "/" + file.path.replace(/\\/g, '/'), bid, "NONE"]
     );
+    }
+    else {
+        db.run(
+            'INSERT INTO posts (title, content, username, timestamp, likes, likedby, BID, curBid) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [title, content, user, `${year}-${month < 10 ? '0' + month : month}-${days} ${hours}:${minutes}`, 0, '', bid, "NONE"]
+        );      
+    }
     await db.close();
 }
 

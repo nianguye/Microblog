@@ -31,12 +31,15 @@
     <!-- you'll need to make this conditional and #each expression work -->
     <div>
     {{#if currentUser.posts.length}}
-        <div class="displayFlex">
-            <input type="radio" id="option1" name="choices" value="Likes" onclick=handleLike(event)>
-            <label for="option1" >Likes</label><br>
-
-            <input type="radio" id="option2" name="choices" value="Recent"  onclick=handleRecent(event)>
-            <label for="option2">Recent</label><br>
+        <div class="displayFlexProfile">
+        <div class="sortDisplay">
+            <button  onclick=displaySort()> Sort by </button>
+            <div class="sortButton">
+            <button  class="sortButton" value="Likes" onclick=handleLike(event)> Likes </button>
+            <button  class="sortButton"  value="Recent" onclick=handleRecent(event)> Recent </button>
+            <button  class="sortButton" value="Bet" onclick=handleBet(event)> Price </button>
+            </div>
+        </div>
         </div>
         <ul>
             {{#each currentUser.posts}}
@@ -61,6 +64,33 @@ function handleLike(event) {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: `curType=Like`
+    })
+
+    .then(response => {
+            if (response.ok) {
+    // Deletion successful, reload the page
+                window.location.reload();
+            } else {
+                console.error('Failed to delete the post.');
+            }
+    }) 
+    .catch(error => {
+        console.error('Error deleting post:', error);
+    });
+    
+    // you might want to "fetch" something...        
+}
+
+function handleBet(event) {
+  
+    const postId = event.target.getAttribute('data-id');
+
+    fetch(`/postChange`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `curType=Bet`
     })
 
     .then(response => {
