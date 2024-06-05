@@ -194,13 +194,11 @@ app.get('/auth/google/callback',
         passport.authenticate('google', { failureRedirect: '/' }),
         async (req, res) => {
         const googleId = req.user.id;
-        console.log(googleId);
         const hashedGoogleId = hash(googleId);
         req.session.hashedGoogleId = hashedGoogleId;
     // Check if user already exists
         try {
             let localUser = await findUserByHashedGoogleId(hashedGoogleId);
-            console.log(localUser)
             if (localUser) {
                 req.session.userId = localUser.id;
                 req.session.loggedIn = true;
@@ -233,7 +231,6 @@ app.post('/postChange',(req, res) => {
     // id: postId
 
     postType = req.body.curType;
-    console.log(postType);
     res.status(200).send({ message: 'Likes updated sucessfully' });
 });
 
@@ -259,7 +256,6 @@ app.get('/post/:id', (req, res) => {
 app.post('/posts', upload.single('file'), async (req, res) => {
     // TODO: Add a new post and redirect to home
     const userId = await findUserById(req.session.userId);
-    console.log(req.file);
     addPost(req.body.title, req.body.content, req.body.bidValue, req.file,  userId.username);
     res.redirect('/');
     //const posts = getPosts();
@@ -268,7 +264,6 @@ app.post('/posts', upload.single('file'), async (req, res) => {
 });
 
 app.post('/bidPrice/:id', isAuthenticated, async (req, res) => {
-    console.log(req.body);
     updateBid(req, res);
 });
 
@@ -350,7 +345,6 @@ async function findUserByUsername(username) {
 
 async function findUserByHashedGoogleId(googleId) { 
     let db = await getDBConnection();
-    console.log(googleId)
     let qry = `SELECT * FROM users WHERE hashedGoogleId=?`
     let result = await db.get(qry,[googleId]);
     await db.close();
@@ -480,7 +474,6 @@ async function updateBid(req,res) {
     var newBid = parseInt(req.body.bidValue);
     var oldBid = parseInt(curPost.BID);
     if (oldBid < newBid) {
-        console.log("here");
         await db.run(
             `UPDATE posts SET BID = ? WHERE id = ?`,[newBid,id]
         );

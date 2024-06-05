@@ -110,11 +110,8 @@
     }
     function handleBidClick(event) {
         const postId = event.target.getAttribute('data-id');
-        console.log(postId)
-        console.log(`bid{{this.id}}`);
+
         const bidInput = document.getElementById(`bid${postId}`).value
-        console.log("here");
-        console.log(bidInput)
         if (isInteger(bidInput)) {
         fetch(`/bidPrice/${postId}`, {
             method: 'POST',
@@ -127,7 +124,7 @@
         .then(response => {
                if (response.ok) {
        // Deletion successful, reload the page
-                    window.location.reload();
+                window.location.reload();
                 } else {
                     console.error('Failed to delete the post.');
                 }
@@ -151,7 +148,6 @@
     function handleDeleteClick(event) {
         const buttonElement = event.target.closest('.delete-button');
         const postId = buttonElement.getAttribute('data-id');        
-        console.log("Test")
         // you might want to "fetch" something...     
         fetch(`/delete/${postId}`, {
             method: 'POST',
